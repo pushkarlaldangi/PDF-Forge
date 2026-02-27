@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "E:\\PDF Forge\\pdfforge\\PDFForge.csproj": {}
+    "E:\\PDF Forge\\PDFForge\\PDFForge.csproj": {}
   },
   "projects": {
-    "E:\\PDF Forge\\pdfforge\\PDFForge.csproj": {
+    "E:\\PDF Forge\\PDFForge\\PDFForge.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "E:\\PDF Forge\\pdfforge\\PDFForge.csproj",
+        "projectUniqueName": "E:\\PDF Forge\\PDFForge\\PDFForge.csproj",
         "projectName": "PDFForge",
-        "projectPath": "E:\\PDF Forge\\pdfforge\\PDFForge.csproj",
+        "projectPath": "E:\\PDF Forge\\PDFForge\\PDFForge.csproj",
         "packagesPath": "C:\\Users\\Push\\.nuget\\packages\\",
-        "outputPath": "E:\\PDF Forge\\pdfforge\\obj\\",
+        "outputPath": "E:\\PDF Forge\\PDFForge\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\Push\\AppData\\Roaming\\NuGet\\NuGet.Config"

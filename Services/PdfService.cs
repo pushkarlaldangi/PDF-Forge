@@ -40,23 +40,22 @@ namespace PDFForge.Services
                         sourceStream.Position = 0;
                         var reader = new PdfReader(sourceStream);
                         
-                        var document = new Document(reader.GetPageSizeWithRotation(1));
-                        var writer = PdfWriter.GetInstance(document, destinationStream);
+                        // Use PdfCopy to preserve page properties including size and orientation
+                        var document = new Document();
+                        var copy = new PdfCopy(document, destinationStream);
                         document.Open();
 
-                        for (int i = 0; i < pageNumbers.Count; i++)
+                        foreach (int pageNum in pageNumbers)
                         {
-                            int pageNum = pageNumbers[i];
                             if (pageNum > 0 && pageNum <= reader.NumberOfPages)
                             {
-                                if (i > 0) document.NewPage();
-                                var page = writer.GetImportedPage(reader, pageNum);
-                                writer.DirectContent.AddTemplate(page, 0, 0);
+                                var page = copy.GetImportedPage(reader, pageNum);
+                                copy.AddPage(page);
                             }
                         }
 
                         document.Close();
-                        writer.Close();
+                        copy.Close();
                         reader.Close();
                         
                         return destinationStream.ToArray();
@@ -80,44 +79,31 @@ namespace PDFForge.Services
                 {
                     using (var destinationStream = new MemoryStream())
                     {
-                        List<PdfReader> readers = new List<PdfReader>();
-                        int totalPages = 0;
-
-                        // Create readers and count pages
-                        foreach (var pdfContent in pdfContents)
-                        {
-                            var sourceStream = new MemoryStream(pdfContent);
-                            sourceStream.Position = 0;
-                            var reader = new PdfReader(sourceStream);
-                            readers.Add(reader);
-                            totalPages += reader.NumberOfPages;
-                        }
-
-                        // Create document and merge
-                        var document = new Document(readers[0].GetPageSizeWithRotation(1));
-                        var writer = PdfWriter.GetInstance(document, destinationStream);
+                        // Use Document without setting a fixed page size
+                        var document = new Document();
+                        var copy = new PdfCopy(document, destinationStream);
                         document.Open();
 
-                        int pageNum = 0;
-                        foreach (var reader in readers)
+                        // Copy all pages from each PDF, preserving their original size and orientation
+                        foreach (var pdfContent in pdfContents)
                         {
-                            for (int i = 1; i <= reader.NumberOfPages; i++)
+                            using (var sourceStream = new MemoryStream(pdfContent))
                             {
-                                if (pageNum > 0) document.NewPage();
-                                var page = writer.GetImportedPage(reader, i);
-                                writer.DirectContent.AddTemplate(page, 0, 0);
-                                pageNum++;
+                                sourceStream.Position = 0;
+                                var reader = new PdfReader(sourceStream);
+                                
+                                for (int i = 1; i <= reader.NumberOfPages; i++)
+                                {
+                                    var page = copy.GetImportedPage(reader, i);
+                                    copy.AddPage(page);
+                                }
+                                
+                                reader.Close();
                             }
                         }
 
                         document.Close();
-                        writer.Close();
-
-                        // Clean up readers
-                        foreach (var reader in readers)
-                        {
-                            reader.Close();
-                        }
+                        copy.Close();
 
                         return destinationStream.ToArray();
                     }
