@@ -1,0 +1,524 @@
+@{
+    ViewData["Title"] = "Edit PDF";
+}
+
+<style>
+    .editor-grid {
+        display: grid;
+        grid-template-columns: 240px 1fr;
+        gap: 24px;
+        margin-top: 24px;
+    }
+
+    .sidebar {
+        background: white;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: 20px 16px;
+        height: fit-content;
+        max-height: 720px;
+        /* overflow removed - let page-list handle scrolling instead */
+        display: flex;
+        flex-direction: column;
+    }
+
+    .sidebar h5 {
+        font-size: 0.875rem;
+        font-weight: 700;
+        color: var(--gray-500);
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin: 0 0 16px;
+        padding-bottom: 12px;
+        border-bottom: 1px solid var(--gray-200);
+    }
+
+    .page-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        overflow-y: auto;
+        min-height: 200px;
+    }
+
+    .page-list-item {
+        background: var(--gray-50);
+        border: 2px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        padding: 8px;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+    }
+
+    .page-list-item:hover {
+        border-color: var(--primary-light);
+        box-shadow: var(--shadow-sm);
+    }
+
+    .page-list-item.selected {
+        background: var(--primary-50);
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(0, 59, 113, 0.15);
+    }
+
+    .page-list-item canvas {
+        max-width: 100%;
+        height: auto;
+        display: block;
+        margin: 0 auto;
+        border-radius: 2px;
+    }
+
+    .page-list-item .page-label {
+        font-size: 0.75rem;
+        font-weight: 600;
+        color: var(--gray-500);
+        margin-top: 8px;
+    }
+
+    .page-list-item.selected .page-label {
+        color: var(--primary);
+    }
+
+    .rotate-controls {
+        margin-top: 0;
+        margin-bottom: 16px;
+        padding-top: 0;
+        padding-bottom: 16px;
+        border-top: none;
+        border-bottom: 1px solid var(--gray-200);
+        background: white;
+        position: relative; /* Changed from sticky - it's flexible in its container */
+        z-index: 10;
+        flex-shrink: 0; /* Prevent from shrinking */
+    }
+
+    .rotate-controls h6 {
+        font-size: 0.8125rem;
+        font-weight: 700;
+        color: var(--gray-600);
+        margin: 0 0 12px;
+    }
+
+    .rotate-btn-group {
+        display: flex;
+        gap: 6px;
+    }
+
+    .rotate-btn {
+        flex: 1;
+        padding: 10px 8px;
+        border: 1px solid var(--gray-200);
+        background: white;
+        border-radius: var(--radius-sm);
+        cursor: pointer;
+        transition: var(--transition);
+        font-weight: 600;
+        font-size: 0.8125rem;
+        color: var(--gray-600);
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        gap: 4px;
+    }
+
+    .rotate-btn i {
+        font-size: 1rem;
+        color: var(--primary);
+    }
+
+    .rotate-btn:hover {
+        background: var(--primary);
+        color: white;
+        border-color: var(--primary);
+    }
+
+    .rotate-btn:hover i {
+        color: white;
+    }
+
+    .rotate-btn:active {
+        transform: scale(0.96);
+    }
+
+    .viewer-panel {
+        background: white;
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-lg);
+        padding: 24px;
+    }
+
+    .page-viewer {
+        background: var(--gray-100);
+        border: 1px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        padding: 24px;
+        text-align: center;
+        min-height: 500px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .page-viewer canvas {
+        max-width: 100%;
+        height: auto;
+        box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+        border-radius: 4px;
+    }
+
+    .viewer-info {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 16px;
+    }
+
+    .viewer-info .page-indicator {
+        font-size: 0.875rem;
+        font-weight: 600;
+        color: var(--gray-600);
+    }
+
+    .viewer-info .page-indicator span {
+        color: var(--primary);
+    }
+
+    .action-bar {
+        margin-top: 32px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    @@media (max-width: 768px) {
+        .editor-grid {
+            grid-template-columns: 1fr;
+        }
+        .sidebar {
+            max-height: none;
+            display: flex;
+            flex-direction: column;
+        }
+        .page-list {
+            flex-direction: row;
+            flex-wrap: wrap;
+            gap: 8px;
+        }
+        .page-list-item {
+            width: 80px;
+        }
+    }
+</style>
+
+<div class="fade-in">
+    <div class="page-header">
+        <h1><i class="fas fa-pen-ruler" style="color: var(--primary); margin-right: 8px;"></i>Edit PDF</h1>
+        <p>Upload a PDF file and rotate individual pages. Click a page in the sidebar, then choose a rotation.</p>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+        <div class="upload-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+        <div class="upload-title">Drop your PDF here or <span class="upload-browse">browse</span></div>
+        <div class="upload-subtitle">Supports PDF files up to 100MB</div>
+    </div>
+
+    <div id="editContainer" style="display: none;" class="fade-in">
+        <div class="info-panel">
+            <i class="fas fa-file-pdf"></i>
+            <strong><span id="fileName"></span></strong>
+            <span class="sep">|</span>
+            <span><strong>Pages:</strong> <span id="pageCount">0</span></span>
+        </div>
+
+        <div class="editor-grid">
+            <div class="sidebar">
+                
+
+                <div class="rotate-controls">
+                    <h6>Rotate Selected Page</h6>
+                    <div class="rotate-btn-group">
+                        <button class="rotate-btn" onclick="rotatePage(90)">
+                            <i class="fas fa-rotate-right"></i> 90°
+                        </button>
+                        <button class="rotate-btn" onclick="rotatePage(180)">
+                            <i class="fas fa-rotate"></i> 180°
+                        </button>
+                        <button class="rotate-btn" onclick="rotatePage(270)">
+                            <i class="fas fa-rotate-left"></i> 270°
+                        </button>
+                    </div>
+                </div>
+                <h5><i class="fas fa-layer-group" style="margin-right: 6px;"></i>Pages</h5>
+                <ul class="page-list" id="pageList"></ul>
+            </div>
+
+            <div class="viewer-panel">
+                <div class="viewer-info">
+                    <div class="page-indicator">
+                        Page <span id="currentPageNum">1</span> of <span id="totalPagesViewer">1</span>
+                    </div>
+                </div>
+                <div class="page-viewer" id="pageViewer">
+                    <canvas id="mainCanvas"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-bar">
+            <button class="btn btn-primary btn-lg" onclick="downloadEdited()"><i class="fas fa-download"></i> Download Edited PDF</button>
+            <button class="btn btn-secondary btn-lg" onclick="resetEdit()"><i class="fas fa-arrow-rotate-left"></i> Start Over</button>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <p>Processing your PDF...</p>
+    </div>
+</div>
+
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const editContainer = document.getElementById('editContainer');
+    const pageList = document.getElementById('pageList');
+    const loading = document.getElementById('loading');
+    let currentPage = 1;
+    let totalPages = 0;
+    let pdfFileBytes = null;
+    let pdfDoc = null;
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('click', (e) => e.stopPropagation());
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function handleFiles(files) {
+        if (files.length === 0) return;
+
+        const file = files[0];
+        if (file.type !== 'application/pdf') {
+            showToast('Please upload a PDF file', 'error');
+            return;
+        }
+
+        loading.style.display = 'block';
+        uploadArea.style.display = 'none';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            pdfFileBytes = new Uint8Array(e.target.result);
+        };
+        reader.readAsArrayBuffer(file);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/Edit/Upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                totalPages = data.pageCount;
+                currentPage = 1;
+                document.getElementById('fileName').textContent = data.fileName;
+                document.getElementById('pageCount').textContent = totalPages;
+                document.getElementById('currentPageNum').textContent = currentPage;
+                document.getElementById('totalPagesViewer').textContent = totalPages;
+
+                editContainer.style.display = 'block';
+                loading.style.display = 'none';
+                loadPdfAndRender();
+                showToast('PDF uploaded — ' + totalPages + ' pages', 'success');
+            } else {
+                showToast('Error uploading file', 'error');
+                resetEdit();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error uploading file', 'error');
+            resetEdit();
+        });
+    }
+
+    async function loadPdfAndRender() {
+        if (!pdfFileBytes) {
+            setTimeout(loadPdfAndRender, 100);
+            return;
+        }
+        try {
+            pdfDoc = await pdfjsLib.getDocument({ data: pdfFileBytes }).promise;
+            renderPageList();
+            renderMainPage(currentPage);
+        } catch (err) {
+            console.error('PDF.js load error:', err);
+        }
+    }
+
+    async function loadPdfFromServer() {
+        try {
+            const response = await fetch('/Edit/GetPdf');
+            if (!response.ok) throw new Error('Failed to fetch PDF');
+            const arrayBuffer = await response.arrayBuffer();
+            pdfFileBytes = new Uint8Array(arrayBuffer);
+            pdfDoc = await pdfjsLib.getDocument({ data: pdfFileBytes }).promise;
+            renderPageList();
+            renderMainPage(currentPage);
+        } catch (err) {
+            console.error('Error loading PDF from server:', err);
+        }
+    }
+
+    function renderPageList() {
+        pageList.innerHTML = '';
+
+        for (let i = 1; i <= totalPages; i++) {
+            const pageItem = document.createElement('li');
+            pageItem.className = 'page-list-item' + (i === currentPage ? ' selected' : '');
+            pageItem.innerHTML = `
+                <canvas id="sidebar-canvas-${i}"></canvas>
+                <div class="page-label">Page ${i}</div>
+            `;
+            pageItem.addEventListener('click', () => selectPage(i));
+            pageList.appendChild(pageItem);
+        }
+
+        renderSidebarThumbnails();
+    }
+
+    async function renderSidebarThumbnails() {
+        if (!pdfDoc) return;
+        for (let i = 1; i <= pdfDoc.numPages; i++) {
+            try {
+                const page = await pdfDoc.getPage(i);
+                const viewport = page.getViewport({ scale: 0.35 });
+                const canvas = document.getElementById('sidebar-canvas-' + i);
+                if (!canvas) continue;
+                const ctx = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+            } catch (err) {
+                console.error('Sidebar thumb error page ' + i, err);
+            }
+        }
+    }
+
+    async function renderMainPage(pageNum) {
+        if (!pdfDoc) return;
+        try {
+            const page = await pdfDoc.getPage(pageNum);
+            const viewport = page.getViewport({ scale: 1.2 });
+            const canvas = document.getElementById('mainCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = viewport.width;
+            canvas.height = viewport.height;
+            await page.render({ canvasContext: ctx, viewport: viewport }).promise;
+        } catch (err) {
+            console.error('Main page render error:', err);
+        }
+    }
+
+    function selectPage(pageNum) {
+        currentPage = pageNum;
+        document.getElementById('currentPageNum').textContent = currentPage;
+
+        document.querySelectorAll('.page-list-item').forEach((item, index) => {
+            if (index + 1 === pageNum) {
+                item.classList.add('selected');
+            } else {
+                item.classList.remove('selected');
+            }
+        });
+
+        renderMainPage(pageNum);
+    }
+
+    function rotatePage(rotation) {
+        loading.style.display = 'block';
+
+        fetch('/Edit/RotatePage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pageNumber: currentPage, rotation: rotation })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                loading.style.display = 'none';
+                loadPdfFromServer();
+                showToast('Page ' + currentPage + ' rotated ' + rotation + '°', 'success');
+            } else {
+                showToast('Error rotating page', 'error');
+                loading.style.display = 'none';
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error rotating page', 'error');
+            loading.style.display = 'none';
+        });
+    }
+
+    function downloadEdited() {
+        loading.style.display = 'block';
+
+        fetch('/Edit/Download', { method: 'POST' })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'edited_document.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            loading.style.display = 'none';
+            showToast('PDF downloaded!', 'success');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error downloading file', 'error');
+            loading.style.display = 'none';
+        });
+    }
+
+    function resetEdit() {
+        fileInput.value = '';
+        currentPage = 1;
+        totalPages = 0;
+        pdfFileBytes = null;
+        pdfDoc = null;
+        pageList.innerHTML = '';
+        editContainer.style.display = 'none';
+        uploadArea.style.display = 'block';
+        loading.style.display = 'none';
+    }
+</script>

@@ -1,0 +1,350 @@
+@{
+    ViewData["Title"] = "Split PDF";
+}
+
+<style>
+    .page-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+        gap: 16px;
+        margin-top: 24px;
+    }
+
+    .page-card {
+        background: white;
+        border: 2px solid var(--gray-200);
+        border-radius: var(--radius-md);
+        padding: 12px;
+        cursor: pointer;
+        transition: var(--transition);
+        text-align: center;
+        position: relative;
+    }
+
+    .page-card:hover {
+        border-color: var(--primary-light);
+        box-shadow: var(--shadow-md);
+    }
+
+    .page-card.selected {
+        border-color: var(--success);
+        background: var(--success-light);
+    }
+
+    .page-card.selected::after {
+        content: '\f00c';
+        font-family: 'Font Awesome 6 Free';
+        font-weight: 900;
+        position: absolute;
+        top: 8px;
+        right: 8px;
+        width: 24px;
+        height: 24px;
+        background: var(--success);
+        color: white;
+        border-radius: 50%;
+        font-size: 11px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .page-card .thumb-wrap {
+        background: var(--gray-100);
+        border-radius: var(--radius-sm);
+        overflow: hidden;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin-bottom: 10px;
+    }
+
+    .page-card .thumb-wrap canvas {
+        max-width: 100%;
+        height: auto;
+        display: block;
+    }
+
+    .page-card .page-label {
+        font-size: 0.8125rem;
+        font-weight: 600;
+        color: var(--gray-600);
+    }
+
+    .toolbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        flex-wrap: wrap;
+        gap: 12px;
+        margin: 20px 0;
+    }
+
+    .toolbar h3 {
+        font-size: 1rem;
+        font-weight: 700;
+        color: var(--gray-800);
+        margin: 0;
+    }
+
+    .toolbar .toolbar-actions {
+        display: flex;
+        gap: 8px;
+    }
+
+    .action-bar {
+        margin-top: 32px;
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+        flex-wrap: wrap;
+    }
+
+    .selected-badge {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        background: var(--primary-50);
+        color: var(--primary);
+        font-size: 0.8125rem;
+        font-weight: 600;
+        padding: 6px 14px;
+        border-radius: 100px;
+        margin-left: 12px;
+    }
+</style>
+
+<div class="fade-in">
+    <div class="page-header">
+        <h1><i class="fas fa-scissors" style="color: var(--primary); margin-right: 8px;"></i>Split PDF</h1>
+        <p>Upload a PDF file and select which pages to keep. Click pages to select or deselect them.</p>
+    </div>
+
+    <div class="upload-area" id="uploadArea">
+        <input type="file" id="fileInput" accept=".pdf" style="display: none;">
+        <div class="upload-icon"><i class="fas fa-cloud-arrow-up"></i></div>
+        <div class="upload-title">Drop your PDF here or <span class="upload-browse">browse</span></div>
+        <div class="upload-subtitle">Supports PDF files up to 100MB</div>
+    </div>
+
+    <div id="previewContainer" style="display: none;" class="fade-in">
+        <div class="info-panel">
+            <i class="fas fa-file-pdf"></i>
+            <strong><span id="fileName"></span></strong>
+            <span class="sep">|</span>
+            <span><strong>Pages:</strong> <span id="pageCount">0</span></span>
+            <span id="selectedBadge" class="selected-badge"><span id="selectedCount">0</span> selected</span>
+        </div>
+
+        <div class="toolbar">
+            <h3>Select Pages to Keep</h3>
+            <div class="toolbar-actions">
+                <button class="btn btn-sm btn-secondary" onclick="selectAll()"><i class="fas fa-check-double"></i> Select All</button>
+                <button class="btn btn-sm btn-secondary" onclick="deselectAll()"><i class="fas fa-xmark"></i> Deselect All</button>
+            </div>
+        </div>
+
+        <div class="page-grid" id="pageGrid"></div>
+
+        <div class="action-bar">
+            <button class="btn btn-primary btn-lg" onclick="splitPdf()"><i class="fas fa-download"></i> Download Split PDF</button>
+            <button class="btn btn-secondary btn-lg" onclick="resetSplit()"><i class="fas fa-arrow-rotate-left"></i> Start Over</button>
+        </div>
+    </div>
+
+    <div class="loading-overlay" id="loading">
+        <div class="spinner"></div>
+        <p>Processing your PDF...</p>
+    </div>
+</div>
+
+<script>
+    const uploadArea = document.getElementById('uploadArea');
+    const fileInput = document.getElementById('fileInput');
+    const previewContainer = document.getElementById('previewContainer');
+    const pageGrid = document.getElementById('pageGrid');
+    const loading = document.getElementById('loading');
+    let selectedPages = [];
+    let totalPages = 0;
+    let pdfFileBytes = null;
+
+    uploadArea.addEventListener('click', () => fileInput.click());
+    fileInput.addEventListener('click', (e) => e.stopPropagation());
+
+    uploadArea.addEventListener('dragover', (e) => {
+        e.preventDefault();
+        uploadArea.classList.add('dragover');
+    });
+
+    uploadArea.addEventListener('dragleave', () => {
+        uploadArea.classList.remove('dragover');
+    });
+
+    uploadArea.addEventListener('drop', (e) => {
+        e.preventDefault();
+        uploadArea.classList.remove('dragover');
+        handleFiles(e.dataTransfer.files);
+    });
+
+    fileInput.addEventListener('change', (e) => {
+        handleFiles(e.target.files);
+    });
+
+    function updateSelectedCount() {
+        document.getElementById('selectedCount').textContent = selectedPages.length;
+    }
+
+    function handleFiles(files) {
+        if (files.length === 0) return;
+        const file = files[0];
+        if (file.type !== 'application/pdf') {
+            showToast('Please upload a PDF file', 'error');
+            return;
+        }
+
+        loading.style.display = 'block';
+        uploadArea.style.display = 'none';
+
+        const reader = new FileReader();
+        reader.onload = function(e) {
+            pdfFileBytes = new Uint8Array(e.target.result);
+        };
+        reader.readAsArrayBuffer(file);
+
+        const formData = new FormData();
+        formData.append('file', file);
+
+        fetch('/Split/Upload', {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                totalPages = data.pageCount;
+                document.getElementById('fileName').textContent = data.fileName;
+                document.getElementById('pageCount').textContent = totalPages;
+
+                renderPageGrid();
+                previewContainer.style.display = 'block';
+                loading.style.display = 'none';
+                renderPdfThumbnails();
+                showToast('PDF uploaded — ' + totalPages + ' pages found', 'success');
+            } else {
+                showToast('Error uploading file', 'error');
+                resetSplit();
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error uploading file', 'error');
+            resetSplit();
+        });
+    }
+
+    async function renderPdfThumbnails() {
+        if (!pdfFileBytes) return;
+        try {
+            const pdf = await pdfjsLib.getDocument({ data: pdfFileBytes }).promise;
+            for (let i = 1; i <= pdf.numPages; i++) {
+                const page = await pdf.getPage(i);
+                const viewport = page.getViewport({ scale: 0.5 });
+                const canvas = document.getElementById('thumb-canvas-' + i);
+                if (!canvas) continue;
+                const context = canvas.getContext('2d');
+                canvas.width = viewport.width;
+                canvas.height = viewport.height;
+                await page.render({ canvasContext: context, viewport: viewport }).promise;
+            }
+        } catch (err) {
+            console.error('PDF.js rendering error:', err);
+        }
+    }
+
+    function renderPageGrid() {
+        pageGrid.innerHTML = '';
+        selectedPages = [];
+        updateSelectedCount();
+
+        for (let i = 1; i <= totalPages; i++) {
+            const card = document.createElement('div');
+            card.className = 'page-card';
+            card.innerHTML = `
+                <div class="thumb-wrap">
+                    <canvas id="thumb-canvas-${i}"></canvas>
+                </div>
+                <div class="page-label">Page ${i}</div>
+            `;
+            card.addEventListener('click', () => togglePage(i, card));
+            pageGrid.appendChild(card);
+        }
+    }
+
+    function togglePage(pageNum, element) {
+        if (selectedPages.includes(pageNum)) {
+            selectedPages = selectedPages.filter(p => p !== pageNum);
+            element.classList.remove('selected');
+        } else {
+            selectedPages.push(pageNum);
+            element.classList.add('selected');
+        }
+        selectedPages.sort((a, b) => a - b);
+        updateSelectedCount();
+    }
+
+    function selectAll() {
+        selectedPages = [];
+        for (let i = 1; i <= totalPages; i++) selectedPages.push(i);
+        document.querySelectorAll('.page-card').forEach(c => c.classList.add('selected'));
+        updateSelectedCount();
+    }
+
+    function deselectAll() {
+        selectedPages = [];
+        document.querySelectorAll('.page-card').forEach(c => c.classList.remove('selected'));
+        updateSelectedCount();
+    }
+
+    function splitPdf() {
+        if (selectedPages.length === 0) {
+            showToast('Please select at least one page', 'warning');
+            return;
+        }
+        loading.style.display = 'block';
+
+        fetch('/Split/SplitPages', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ pageNumbers: selectedPages })
+        })
+        .then(response => response.blob())
+        .then(blob => {
+            const url = window.URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'split_document.pdf';
+            document.body.appendChild(a);
+            a.click();
+            window.URL.revokeObjectURL(url);
+            a.remove();
+            loading.style.display = 'none';
+            showToast('PDF split successfully!', 'success');
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            showToast('Error splitting PDF', 'error');
+            loading.style.display = 'none';
+        });
+    }
+
+    function resetSplit() {
+        fileInput.value = '';
+        selectedPages = [];
+        totalPages = 0;
+        pdfFileBytes = null;
+        pageGrid.innerHTML = '';
+        previewContainer.style.display = 'none';
+        uploadArea.style.display = 'block';
+        loading.style.display = 'none';
+    }
+</script>

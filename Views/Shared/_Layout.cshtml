@@ -1,0 +1,199 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>@ViewData["Title"] - IDEX PDF Tools</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css" />
+    <link rel="stylesheet" href="~/lib/bootstrap/dist/css/bootstrap.min.css" />
+    <link rel="stylesheet" href="~/css/site.css" asp-append-version="true" />
+    <link rel="stylesheet" href="~/PDFForge.styles.css" asp-append-version="true" />
+    <style>
+        /* ===== Navbar ===== */
+        .pf-navbar {
+            background: white;
+            border-bottom: 1px solid var(--gray-200);
+            box-shadow: var(--shadow-sm);
+            padding: 0 0;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .pf-navbar .container-fluid {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 0 24px;
+        }
+
+        .pf-navbar .navbar-brand {
+            font-size: 1.25rem;
+            font-weight: 800;
+            color: var(--gray-900) !important;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 16px 0;
+            letter-spacing: -0.02em;
+            text-decoration: none;
+        }
+
+        .pf-navbar .navbar-brand .brand-icon {
+            width: 36px;
+            height: 36px;
+            background: var(--primary);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 16px;
+        }
+
+        .pf-navbar .navbar-brand:hover {
+            color: var(--primary) !important;
+        }
+
+        .pf-navbar .nav-link {
+            color: var(--gray-600) !important;
+            font-weight: 500;
+            font-size: 0.9rem;
+            padding: 20px 16px !important;
+            transition: var(--transition);
+            position: relative;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .pf-navbar .nav-link:hover {
+            color: var(--primary) !important;
+        }
+
+        .pf-navbar .nav-link.active-link {
+            color: var(--primary) !important;
+        }
+
+        .pf-navbar .nav-link.active-link::after {
+            content: '';
+            position: absolute;
+            bottom: -1px;
+            left: 16px;
+            right: 16px;
+            height: 2px;
+            background: var(--primary);
+            border-radius: 2px;
+        }
+
+        .pf-navbar .nav-link i {
+            font-size: 0.85rem;
+        }
+
+        .navbar-toggler {
+            border: 1px solid var(--gray-200);
+            padding: 6px 10px;
+        }
+
+        .navbar-toggler-icon {
+            width: 1.2em;
+            height: 1.2em;
+        }
+
+        /* ===== Main Container ===== */
+        .pf-main {
+            max-width: 1280px;
+            margin: 0 auto;
+            padding: 32px 24px 60px;
+        }
+
+        /* ===== Footer ===== */
+        .pf-footer {
+            background: white;
+            border-top: 1px solid var(--gray-200);
+            padding: 24px 0;
+            color: var(--gray-400);
+            font-size: 0.8125rem;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
+
+    <header>
+        <nav class="pf-navbar navbar navbar-expand-md">
+            <div class="container-fluid">
+                <a class="navbar-brand" asp-area="" asp-controller="Home" asp-action="Index">
+                    <span class="brand-icon"><i class="fas fa-file-pdf"></i></span>
+                    IDEX <span style="font-weight:400;color:var(--gray-500)">PDF Tools</span>
+                </a>
+                <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navContent"
+                        aria-controls="navContent" aria-expanded="false" aria-label="Toggle navigation">
+                    <span class="navbar-toggler-icon"></span>
+                </button>
+                <div class="collapse navbar-collapse" id="navContent">
+                    <ul class="navbar-nav ms-auto">
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewData["Title"]?.ToString()?.Contains("Home") == true ? "active-link" : "")"
+                               asp-controller="Home" asp-action="Index">
+                                <i class="fas fa-home"></i> Home
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewData["Title"]?.ToString()?.Contains("Split") == true ? "active-link" : "")"
+                               asp-controller="Split" asp-action="Index">
+                                <i class="fas fa-scissors"></i> Split
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewData["Title"]?.ToString()?.Contains("Merge") == true ? "active-link" : "")"
+                               asp-controller="Merge" asp-action="Index">
+                                <i class="fas fa-layer-group"></i> Merge
+                            </a>
+                        </li>
+                        <li class="nav-item">
+                            <a class="nav-link @(ViewData["Title"]?.ToString()?.Contains("Edit") == true ? "active-link" : "")"
+                               asp-controller="Edit" asp-action="Index">
+                                <i class="fas fa-pen-ruler"></i> Edit
+                            </a>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </header>
+
+    <div class="pf-main">
+        <main role="main">
+            @RenderBody()
+        </main>
+    </div>
+
+    <footer class="pf-footer">
+        &copy; @DateTime.Now.Year IDEX &mdash; Internal PDF Tools for IDEX employees.
+    </footer>
+
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+    <script>
+        pdfjsLib.GlobalWorkerOptions.workerSrc = 'https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+
+        // Global toast helper
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = 'toast-item' + (type !== 'info' ? ' toast-' + type : '');
+            const icons = { success: 'fa-check-circle', error: 'fa-exclamation-circle', warning: 'fa-exclamation-triangle', info: 'fa-info-circle' };
+            const colors = { success: '#2e7d32', error: '#c62828', warning: '#f57f17', info: '#003B71' };
+            toast.innerHTML = '<i class="fas ' + (icons[type] || icons.info) + '" style="color:' + (colors[type] || colors.info) + ';font-size:18px"></i><span>' + message + '</span>';
+            container.appendChild(toast);
+            setTimeout(() => { toast.classList.add('toast-exit'); setTimeout(() => toast.remove(), 300); }, 3500);
+        }
+    </script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
+
