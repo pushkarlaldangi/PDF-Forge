@@ -1,3 +1,5 @@
+using System.IO;
+using Microsoft.AspNetCore.DataProtection;
 using PDFForge.Services;
 
 var builder = WebApplication.CreateBuilder(args);
@@ -12,6 +14,12 @@ builder.Services.AddSession(options =>
     options.Cookie.HttpOnly = true;
     options.Cookie.IsEssential = true;
 });
+
+// Persist keys so session cookies survive app restarts.
+builder.Services.AddDataProtection()
+    .PersistKeysToFileSystem(new DirectoryInfo(
+        Path.Combine(builder.Environment.ContentRootPath, "App_Data", "DataProtectionKeys")))
+    .SetApplicationName("PDFForge");
 
 var app = builder.Build();
 

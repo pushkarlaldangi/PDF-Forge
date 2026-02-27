@@ -4,7 +4,6 @@ using System;
 using System.IO;
 using System.Collections.Generic;
 using System.Linq;
-using iTextPdfSharp = iTextSharp.text.pdf;
 
 namespace PDFForge.Services
 {
@@ -41,24 +40,24 @@ namespace PDFForge.Services
                         sourceStream.Position = 0;
                         var reader = new PdfReader(sourceStream);
                         
-                        using (var document = new Document(reader.GetPageSizeWithRotation(1)))
+                        var document = new Document(reader.GetPageSizeWithRotation(1));
+                        var writer = PdfWriter.GetInstance(document, destinationStream);
+                        document.Open();
+
+                        for (int i = 0; i < pageNumbers.Count; i++)
                         {
-                            var writer = PdfWriter.GetInstance(document, destinationStream);
-                            document.Open();
-
-                            for (int i = 0; i < pageNumbers.Count; i++)
+                            int pageNum = pageNumbers[i];
+                            if (pageNum > 0 && pageNum <= reader.NumberOfPages)
                             {
-                                int pageNum = pageNumbers[i];
-                                if (pageNum > 0 && pageNum <= reader.NumberOfPages)
-                                {
-                                    if (i > 0) document.NewPage();
-                                    var page = writer.GetImportedPage(reader, pageNum);
-                                    writer.DirectContent.AddTemplate(page, 0, 0);
-                                }
+                                if (i > 0) document.NewPage();
+                                var page = writer.GetImportedPage(reader, pageNum);
+                                writer.DirectContent.AddTemplate(page, 0, 0);
                             }
-
-                            document.Close();
                         }
+
+                        document.Close();
+                        writer.Close();
+                        reader.Close();
                         
                         return destinationStream.ToArray();
                     }
@@ -95,25 +94,24 @@ namespace PDFForge.Services
                         }
 
                         // Create document and merge
-                        using (var document = new Document(readers[0].GetPageSizeWithRotation(1)))
+                        var document = new Document(readers[0].GetPageSizeWithRotation(1));
+                        var writer = PdfWriter.GetInstance(document, destinationStream);
+                        document.Open();
+
+                        int pageNum = 0;
+                        foreach (var reader in readers)
                         {
-                            var writer = PdfWriter.GetInstance(document, destinationStream);
-                            document.Open();
-
-                            int pageNum = 0;
-                            foreach (var reader in readers)
+                            for (int i = 1; i <= reader.NumberOfPages; i++)
                             {
-                                for (int i = 1; i <= reader.NumberOfPages; i++)
-                                {
-                                    if (pageNum > 0) document.NewPage();
-                                    var page = writer.GetImportedPage(reader, i);
-                                    writer.DirectContent.AddTemplate(page, 0, 0);
-                                    pageNum++;
-                                }
+                                if (pageNum > 0) document.NewPage();
+                                var page = writer.GetImportedPage(reader, i);
+                                writer.DirectContent.AddTemplate(page, 0, 0);
+                                pageNum++;
                             }
-
-                            document.Close();
                         }
+
+                        document.Close();
+                        writer.Close();
 
                         // Clean up readers
                         foreach (var reader in readers)
@@ -153,7 +151,7 @@ namespace PDFForge.Services
                         var pageDic = reader.GetPageN(pageNumber);
                         int currentRotation = reader.GetPageRotation(pageNumber);
                         int newRotation = (currentRotation + rotation) % 360;
-                        pageDic.Put(iTextPdfSharp.PdfName.ROTATE, new iTextPdfSharp.PdfNumber(newRotation));
+                        pageDic.Put(PdfName.Rotate, new PdfNumber(newRotation));
 
                         stamper.Close();
                         reader.Close();

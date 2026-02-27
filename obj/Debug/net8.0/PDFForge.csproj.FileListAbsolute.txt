@@ -8,7 +8,6 @@ E:\PDF Forge\PDFForge\bin\Debug\net8.0\PDFForge.runtimeconfig.json
 E:\PDF Forge\PDFForge\bin\Debug\net8.0\PDFForge.dll
 E:\PDF Forge\PDFForge\bin\Debug\net8.0\PDFForge.pdb
 E:\PDF Forge\PDFForge\bin\Debug\net8.0\BouncyCastle.Crypto.dll
-E:\PDF Forge\PDFForge\bin\Debug\net8.0\itextsharp.dll
 E:\PDF Forge\PDFForge\bin\Debug\net8.0\Microsoft.Win32.SystemEvents.dll
 E:\PDF Forge\PDFForge\bin\Debug\net8.0\PdfSharp.Charting.dll
 E:\PDF Forge\PDFForge\bin\Debug\net8.0\PdfSharp.Quality.dll
@@ -48,3 +47,4 @@ E:\PDF Forge\PDFForge\obj\Debug\net8.0\refint\PDFForge.dll
 E:\PDF Forge\PDFForge\obj\Debug\net8.0\PDFForge.pdb
 E:\PDF Forge\PDFForge\obj\Debug\net8.0\PDFForge.genruntimeconfig.cache
 E:\PDF Forge\PDFForge\obj\Debug\net8.0\ref\PDFForge.dll
+E:\PDF Forge\PDFForge\bin\Debug\net8.0\iTextSharp.LGPLv2.Core.dll

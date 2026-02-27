@@ -348,25 +348,45 @@
             filesList.appendChild(fileItem);
         });
 
-        renderMergeThumbnails();
+        // Render thumbnails and wait for completion
+        renderMergeThumbnails().catch(err => console.error('Thumbnail rendering error:', err));
     }
 
     async function renderMergeThumbnails() {
-        for (let i = 0; i < fileArrayBuffers.length; i++) {
+        // Clear any existing content first
+        filesList.querySelectorAll('canvas').forEach(canvas => {
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        });
+
+        const renderPromises = fileArrayBuffers.map(async (buffer, i) => {
             try {
-                const pdf = await pdfjsLib.getDocument({ data: fileArrayBuffers[i] }).promise;
+                const canvas = document.getElementById('merge-thumb-' + i);
+                if (!canvas) return;
+
+                // Clone the data so PDF.js worker does not detach the original buffer
+                const data = buffer instanceof Uint8Array
+                    ? new Uint8Array(buffer)
+                    : new Uint8Array(buffer);
+
+                const pdf = await pdfjsLib.getDocument({ data }).promise;
                 const page = await pdf.getPage(1);
                 const viewport = page.getViewport({ scale: 0.3 });
-                const canvas = document.getElementById('merge-thumb-' + i);
-                if (!canvas) continue;
                 const ctx = canvas.getContext('2d');
+
+                // Ensure canvas dimensions are set
                 canvas.width = viewport.width;
                 canvas.height = viewport.height;
+
+                // Render the page
                 await page.render({ canvasContext: ctx, viewport: viewport }).promise;
             } catch (err) {
                 console.error('Merge thumb error file ' + i, err);
             }
-        }
+        });
+
+        // Wait for all renders to complete
+        await Promise.all(renderPromises);
     }
 
     function handleDragStart(e) {
